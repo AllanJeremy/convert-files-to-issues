@@ -69,14 +69,6 @@ function getFileNamesLocally(
   ).filter((c) => c.endsWith(`.${fileExtension}`));
 }
 
-function extractRepoDataFromUrl(repoUrl: string) {
-  // TODO: Replace this to change what repo you want to generate issues for
-  return {
-    owner: "AllanJeremy",
-    repo: "test",
-  };
-}
-
 function getUpstreamFilePath(
   repoUrl: string,
   branch: string,
@@ -195,12 +187,21 @@ async function createConversionIssues(
   );
 }
 
+//TODO: MODIFY THIS
+function extractRepoDataFromUrl(repoUrl: string) {
+  // TODO: Replace this to change what repo you want to generate issues for
+  return {
+    owner: "AllanJeremy", // Owner of the repo you want to add the issues to
+    repo: "test", // Name of the repo you want to add issues to
+  };
+}
+
 async function main() {
   createConversionIssues(
-    "https://github.com/thisdot/react-hooks-testing-library-lua",
-    "main",
-    "../../ThisDot/Roblox/TestingLibrary/react-hooks-lua",
-    "src"
+    "https://github.com/thisdot/react-hooks-testing-library-lua", // repo url
+    "main", // repo branch
+    "../../ThisDot/Roblox/TestingLibrary/react-hooks-lua", // poth to the local version of the repo to convert
+    "src" // source directory in the repo
   );
 }
 
