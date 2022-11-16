@@ -146,7 +146,9 @@ async function createConversionIssues(
   const { owner, repo } = extractRepoDataFromUrl(repoUrl);
   const existingIssueNames = await getExistingIssues(owner, repo);
 
-  return Promise.all(
+  let totalConverted = 0;
+
+  const convertResult = await Promise.all(
     fileNames.map(async (fileName, i) => {
       const { title, body } = generateIssueTitleAndBody(
         repoUrl,
@@ -182,9 +184,19 @@ async function createConversionIssues(
         fileName
       );
 
+      totalConverted++;
+
       return createStatus;
     })
   );
+
+  console.log(
+    chalk.bgWhite(
+      chalk.black(`Conversion complete. Converted ${totalConverted} file(s)`)
+    )
+  );
+
+  return convertResult;
 }
 
 //TODO: MODIFY THIS
