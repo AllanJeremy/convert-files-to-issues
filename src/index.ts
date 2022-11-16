@@ -192,7 +192,9 @@ async function createConversionIssues(
 
   console.log(
     chalk.bgWhite(
-      chalk.black(`Conversion complete. Converted ${totalConverted} file(s)`)
+      chalk.black(
+        `Conversion complete. Converted ${totalConverted}/${fileNames.length} file(s)`
+      )
     )
   );
 
