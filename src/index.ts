@@ -1,5 +1,6 @@
 import { Octokit } from "octokit";
 import { readdirSync } from "fs";
+import * as chalk from "chalk";
 import * as dotenv from "dotenv";
 import * as path from "path";
 
@@ -37,7 +38,7 @@ function getFileNamesLocally(
 }
 
 function extractRepoDataFromUrl(repoUrl: string) {
-  // TODO: Add implementation
+  // TODO: Replace this to change what repo you want to generate issues for
   return {
     owner: "AllanJeremy",
     repo: "test",
@@ -73,17 +74,48 @@ function generateIssueTitleAndBody(
   };
 }
 
+async function createGithubIssue(data: {
+  owner: string;
+  repo: string;
+  title: string;
+  body: string;
+}) {
+  console.log(
+    chalk.grey(`Preparing to create issue: ${chalk.blueBright(data.title)}`)
+  );
+
+  return octokit.rest.issues
+    .create(data)
+    .then((response) => {
+      console.log(
+        chalk.greenBright(`\nSuccessfully created issue: ${data.title}`)
+      );
+      return response;
+    })
+    .catch((err) => {
+      console.error(chalk.redBright("Something went wrong: "), err);
+      return err;
+    });
+}
+
 function createConversionIssues(
   repoUrl: string,
   branch: string,
   projectRootDir = ".",
-  sourceDirFromRoot = "src"
+  sourceDirFromRoot = "src",
+  fileExtension = "lua"
 ) {
   const startingDir = path.join(projectRootDir, sourceDirFromRoot);
-  return Promise.all(
-    getFileNamesLocally(startingDir).map(async (fileName, i) => {
-      // TODO: Check if there are duplicates
+  const fileNames = getFileNamesLocally(startingDir, fileExtension);
 
+  console.log(
+    chalk.blue(
+      `Preparing to convert files to issues (${fileNames.length} ${fileExtension} files found)`
+    )
+  );
+
+  return Promise.all(
+    fileNames.map(async (fileName, i) => {
       const { owner, repo } = extractRepoDataFromUrl(repoUrl);
       const { title, body } = generateIssueTitleAndBody(
         repoUrl,
@@ -92,12 +124,19 @@ function createConversionIssues(
         fileName
       );
 
-      return octokit.rest.issues.create({
+      const createStatus = await createGithubIssue({
         owner,
         repo,
         title,
         body,
       });
+
+      console.log(
+        "Creation status: ",
+        chalk.bgGrey(JSON.stringify(createStatus))
+      );
+
+      return createStatus;
     })
   );
 }
