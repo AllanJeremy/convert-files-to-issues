@@ -10,6 +10,38 @@ const octokit = new Octokit({
   auth: process.env.GITHUB_PAT,
 });
 
+function getExistingIssues(owner: string, repo: string) {
+  // TODO: Add a workaround that keeps checking until we no longer have issues to check
+  return octokit
+    .graphql(
+      `
+  query lastIssues($owner: String!, $repo: String!, $num: Int = 100) {
+    repository(owner: $owner, name: $repo) {
+      issues(last: $num) {
+        edges {
+          node {
+            title
+          }
+        }
+      }
+    }
+  }
+  `,
+      {
+        owner,
+        repo,
+        num: 100,
+      }
+    )
+    .then(
+      (response) =>
+        (response as any).repository.issues.edges.map(
+          (issue) => issue.node.title
+        ) || []
+    )
+    .catch((_) => []);
+}
+
 function getFileNamesFromGit(repoUrl: string, sourceDirFromRoot: string) {
   // TODO: Add implementation
 }
@@ -87,8 +119,9 @@ async function createGithubIssue(data: {
   return octokit.rest.issues
     .create(data)
     .then((response) => {
+      console.log(JSON.stringify(response));
       console.log(
-        chalk.greenBright(`\nSuccessfully created issue: ${data.title}`)
+        chalk.greenBright(`Successfully created issue: ${data.title}`)
       );
       return response;
     })
@@ -98,7 +131,11 @@ async function createGithubIssue(data: {
     });
 }
 
-function createConversionIssues(
+function issueAlreadyExists(existingIssues: string[], issueTitle) {
+  return existingIssues.includes(issueTitle);
+}
+
+async function createConversionIssues(
   repoUrl: string,
   branch: string,
   projectRootDir = ".",
@@ -114,15 +151,30 @@ function createConversionIssues(
     )
   );
 
+  const { owner, repo } = extractRepoDataFromUrl(repoUrl);
+  const existingIssueNames = await getExistingIssues(owner, repo);
+
   return Promise.all(
     fileNames.map(async (fileName, i) => {
-      const { owner, repo } = extractRepoDataFromUrl(repoUrl);
       const { title, body } = generateIssueTitleAndBody(
         repoUrl,
         branch,
         sourceDirFromRoot,
         fileName
       );
+
+      console.log();
+      // Prevent creation if the issue already exists
+      if (issueAlreadyExists(existingIssueNames, title)) {
+        console.log(
+          `${chalk.bgYellow(chalk.black("WARNING: "))} ${chalk.yellow(
+            `Skipped. An issue with the same title (${chalk.bgYellow(
+              chalk.black(title)
+            )}) already exists`
+          )}`
+        );
+        return;
+      }
 
       const createStatus = await createGithubIssue({
         owner,
@@ -132,8 +184,10 @@ function createConversionIssues(
       });
 
       console.log(
-        "Creation status: ",
-        chalk.bgGrey(JSON.stringify(createStatus))
+        chalk.yellow(
+          "Secondary rate limit probably hit. You need to run the tool again."
+        ),
+        fileName
       );
 
       return createStatus;
